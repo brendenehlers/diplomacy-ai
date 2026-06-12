@@ -75,3 +75,26 @@ class Orchestrator:
         record["orders_final"] = valid
         record["dropped"] = invalid
         return power, valid, record
+
+    def _alive_powers(self) -> list[str]:
+        state = self.game.get_state()
+        return [p for p in POWERS if state["units"][p] or state["centers"][p]]
+
+    def route(self, round_results: dict) -> dict[str, list[InMessage]]:
+        inboxes: dict[str, list[InMessage]] = {p: [] for p in POWERS}
+        phase = self.game.get_current_phase()
+        for sender, result in round_results.items():
+            for m in result.messages:
+                self.game.add_message(Message(
+                    sender=sender, recipient=m.to, message=m.body,
+                    phase=phase, time_sent=common.timestamp_microseconds(),
+                ))
+                if m.to == "GLOBAL":
+                    for p in POWERS:
+                        if p != sender:
+                            inboxes[p].append(
+                                InMessage(sender=sender, body=m.body, scope="global"))
+                elif m.to in inboxes:
+                    inboxes[m.to].append(
+                        InMessage(sender=sender, body=m.body, scope="private"))
+        return inboxes

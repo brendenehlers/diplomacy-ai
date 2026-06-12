@@ -39,3 +39,28 @@ async def test_collect_orders_repairs_then_drops(tmp_path):
     assert final == ["A PAR H"]
     assert record["repaired"] is True
     assert agents["FRANCE"].order_calls == [None, ["A PAR - MARS"]]
+
+
+from diplomacy_ai.models import NegotiationResult, OutMessage
+
+
+def test_route_delivers_private_and_global(tmp_path):
+    orch = _orch(tmp_path, {p: FakeAgent(p) for p in POWERS})
+    results = {
+        "FRANCE": NegotiationResult("r", [
+            OutMessage("ENGLAND", "secret"), OutMessage("GLOBAL", "hi all")]),
+        "ENGLAND": NegotiationResult("r", []),
+    }
+    inboxes = orch.route(results)
+    eng = [m for m in inboxes["ENGLAND"] if m.body == "secret"]
+    assert len(eng) == 1 and eng[0].scope == "private"
+    assert all(m.body != "secret" for m in inboxes["GERMANY"])
+    assert any(m.body == "hi all" for m in inboxes["GERMANY"])
+    assert all(m.body != "hi all" for m in inboxes["FRANCE"])
+    assert len(orch.game.messages) == 2
+
+
+def test_route_returns_inbox_for_every_power(tmp_path):
+    orch = _orch(tmp_path, {p: FakeAgent(p) for p in POWERS})
+    inboxes = orch.route({"FRANCE": NegotiationResult("r", [])})
+    assert set(inboxes.keys()) == set(POWERS)
