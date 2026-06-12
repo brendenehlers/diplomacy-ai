@@ -1,0 +1,41 @@
+from diplomacy import Game
+from diplomacy_ai.config import GameConfig
+from diplomacy_ai.orchestrator import Orchestrator, POWERS
+from diplomacy_ai.recorder import Recorder
+from tests.conftest import FakeAgent
+
+
+def _orch(tmp_path, agents, **cfg):
+    game = Game()
+    config = GameConfig(**cfg)
+    rec = Recorder(tmp_path / "run")
+    return Orchestrator(game, agents, config, rec)
+
+
+def test_build_view_exposes_units_and_legal_orders(tmp_path):
+    orch = _orch(tmp_path, {p: FakeAgent(p) for p in POWERS})
+    view = orch.build_view("FRANCE")
+    assert "A PAR" in view.own_units or "F BRE" in view.own_units
+    assert "PAR" in view.legal_orders
+
+
+async def test_collect_orders_keeps_valid_drops_invalid(tmp_path):
+    agents = {p: FakeAgent(p) for p in POWERS}
+    agents["FRANCE"] = FakeAgent("FRANCE", order_scripts=[["A PAR H", "A PAR - MARS"]])
+    orch = _orch(tmp_path, agents)
+    view = orch.build_view("FRANCE")
+    power, final, record = await orch.collect_power_orders("FRANCE", view)
+    assert "A PAR H" in final
+    assert "A PAR - MARS" in record["dropped"]
+
+
+async def test_collect_orders_repairs_then_drops(tmp_path):
+    agents = {p: FakeAgent(p) for p in POWERS}
+    agents["FRANCE"] = FakeAgent(
+        "FRANCE", order_scripts=[["A PAR - MARS"], ["A PAR H"]])
+    orch = _orch(tmp_path, agents)
+    view = orch.build_view("FRANCE")
+    power, final, record = await orch.collect_power_orders("FRANCE", view)
+    assert final == ["A PAR H"]
+    assert record["repaired"] is True
+    assert agents["FRANCE"].order_calls == [None, ["A PAR - MARS"]]
