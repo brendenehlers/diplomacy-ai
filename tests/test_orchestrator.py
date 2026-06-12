@@ -64,3 +64,21 @@ def test_route_returns_inbox_for_every_power(tmp_path):
     orch = _orch(tmp_path, {p: FakeAgent(p) for p in POWERS})
     inboxes = orch.route({"FRANCE": NegotiationResult("r", [])})
     assert set(inboxes.keys()) == set(POWERS)
+
+
+async def test_run_terminates_at_max_year_and_records(tmp_path):
+    agents = {p: FakeAgent(p, order_scripts=[[]] * 50) for p in POWERS}
+    orch = _orch(tmp_path, agents, n_negotiation_rounds=1, max_year=1901)
+    await orch.run()
+    assert int(orch.game.get_current_phase()[1:5]) >= 1902
+    assert (tmp_path / "run" / "game.json").exists()
+    assert (tmp_path / "run" / "transcript" / "S1901M.json").exists()
+    assert "max_year" in (tmp_path / "run" / "events.log").read_text()
+
+
+async def test_run_phase_sets_valid_orders(tmp_path):
+    agents = {p: FakeAgent(p, order_scripts=[[]]) for p in POWERS}
+    agents["FRANCE"] = FakeAgent("FRANCE", order_scripts=[["A PAR H"]])
+    orch = _orch(tmp_path, agents, n_negotiation_rounds=1, max_year=1920)
+    await orch.run_phase()
+    assert orch.game.get_current_phase() != "S1901M"

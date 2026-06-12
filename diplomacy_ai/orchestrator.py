@@ -80,6 +80,63 @@ class Orchestrator:
         state = self.game.get_state()
         return [p for p in POWERS if state["units"][p] or state["centers"][p]]
 
+    async def _run_negotiation(self, phase_records: dict) -> None:
+        alive = self._alive_powers()
+        inboxes: dict[str, list[InMessage]] = {p: [] for p in alive}
+        for p in alive:
+            phase_records[p]["negotiation_sent"] = []
+            phase_records[p]["negotiation_received"] = []
+        total = self.config.n_negotiation_rounds
+        for rnd in range(1, total + 1):
+            views = {p: self.build_view(p) for p in alive}
+            coros = [
+                self.agents[p].negotiate(views[p], inboxes[p], rnd, total)
+                for p in alive
+            ]
+            results = dict(zip(alive, await asyncio.gather(*coros)))
+            for p, r in results.items():
+                phase_records[p]["negotiation_sent"].append({
+                    "round": rnd, "reasoning": r.reasoning,
+                    "messages": [{"to": m.to, "body": m.body} for m in r.messages],
+                    "meta": r.meta,
+                })
+            new_inboxes = self.route(results)
+            for p in alive:
+                phase_records[p]["negotiation_received"].extend(
+                    {"round": rnd, "sender": m.sender, "body": m.body, "scope": m.scope}
+                    for m in new_inboxes[p]
+                )
+            inboxes = {p: new_inboxes[p] for p in alive}
+
+    async def run_phase(self) -> None:
+        phase = self.game.get_current_phase()
+        phase_records: dict = {p: {} for p in POWERS}
+        if phase.endswith("M"):
+            await self._run_negotiation(phase_records)
+        order_powers = [p for p in POWERS if self.game.get_orderable_locations(p)]
+        if order_powers:
+            views = {p: self.build_view(p) for p in order_powers}
+            collected = await asyncio.gather(
+                *[self.collect_power_orders(p, views[p]) for p in order_powers]
+            )
+            for power, valid, record in collected:
+                self.game.set_orders(power, valid)
+                phase_records[power]["orders"] = record
+        self.recorder.record_phase(phase, phase_records)
+        self.recorder.log(f"Processing {phase}")
+        self.game.process()
+        self.recorder.save_game(self.game)
+
+    async def run(self) -> None:
+        self.recorder.save_game(self.game)
+        while not self.game.is_game_done:
+            year = int(self.game.get_current_phase()[1:5])
+            if year > self.config.max_year:
+                self.recorder.log(f"Reached max_year {self.config.max_year}; stopping.")
+                break
+            await self.run_phase()
+        self.recorder.log("Game finished.")
+
     def route(self, round_results: dict) -> dict[str, list[InMessage]]:
         inboxes: dict[str, list[InMessage]] = {p: [] for p in POWERS}
         phase = self.game.get_current_phase()
