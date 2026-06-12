@@ -9,7 +9,13 @@ submit orders. All reasoning, messages, and orders are recorded for review.
 
 ```bash
 .venv/bin/pip install -e ".[dev]"
-export GEMINI_API_KEY=...   # or any LiteLLM-supported provider key
+
+# Default model runs locally via LM Studio (start it with the model loaded):
+export LM_STUDIO_API_BASE=http://localhost:1234/v1
+export LM_STUDIO_API_KEY=lm-studio   # any non-empty string
+
+# Or use a hosted provider by changing the model in game.toml, e.g.:
+# export GEMINI_API_KEY=...
 ```
 
 ## Run a game
@@ -27,7 +33,8 @@ Output lands in `runs/<timestamp>/`:
 
 Edit `game.toml`: set `n_negotiation_rounds`, `max_year`, `default_model`, and
 optional per-power `model` / `persona` overrides. Switch models by changing the
-model string (any LiteLLM-supported model, e.g. `gemini/gemini-2.5-pro`,
+model string (any LiteLLM-supported model, e.g.
+`lm_studio/qwen/qwen3-4b-thinking-2507` (local), `gemini/gemini-2.5-pro`,
 `openai/gpt-4o`, `anthropic/claude-...`).
 
 ## Tests

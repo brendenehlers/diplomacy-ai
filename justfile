@@ -1,6 +1,9 @@
 # Diplomacy AI task runner. Run `just` to list recipes.
 # All Python runs through the project venv at .venv.
 
+# Load environment variables from .env (copy .env.example to .env first).
+set dotenv-load := true
+
 venv := ".venv/bin"
 
 # List available recipes

@@ -21,10 +21,12 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
 
 - **Always use the venv** at `.venv/` (`.venv/bin/...`). Python is **3.14**, so
   `tomllib` is stdlib (no `tomli` dependency).
-- **API key:** real games and the smoke test need `GEMINI_API_KEY` (or another
-  LiteLLM-supported provider key matching the configured model). The default
-  model is `gemini/gemini-2.5-pro`. The fast test suite uses a fake provider and
-  needs **no network**.
+- **Default model is local:** `lm_studio/qwen/qwen3-4b-thinking-2507`, served by
+  LM Studio's OpenAI-compatible endpoint. Before a real run, start LM Studio with
+  the model loaded and export `LM_STUDIO_API_BASE=http://localhost:1234/v1` and
+  `LM_STUDIO_API_KEY=lm-studio` (any non-empty string). To use a hosted provider
+  instead, change the model in `game.toml` and set its key (e.g. `GEMINI_API_KEY`).
+  The fast test suite uses a fake provider and needs **no network or LM Studio**.
 - **The smoke test is opt-in:** skipped unless both `RUN_SMOKE=1` and
   `GEMINI_API_KEY` are set. It makes real API calls (costs money).
 - **Module boundaries are deliberate — keep them:**
