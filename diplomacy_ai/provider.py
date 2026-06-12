@@ -1,6 +1,7 @@
 """LiteLLM async wrapper. The ONLY module that imports litellm."""
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 from typing import Any, Awaitable, Callable, Protocol
@@ -26,9 +27,11 @@ class LiteLLMProvider:
         self,
         completion_fn: Callable[..., Awaitable[Any]] | None = None,
         retries: int = 2,
+        backoff_base: float = 2.0,
     ):
         self._completion_fn = completion_fn or litellm.acompletion
         self._retries = retries
+        self._backoff_base = backoff_base
 
     async def complete(
         self, *, model: str, system: str, user: str, schema: dict,
@@ -43,7 +46,7 @@ class LiteLLMProvider:
             "json_schema": {"name": schema_name, "schema": schema, "strict": True},
         }
         last_err: Exception | None = None
-        for _ in range(self._retries + 1):
+        for attempt in range(self._retries + 1):
             start = time.perf_counter()
             try:
                 resp = await self._completion_fn(
@@ -57,6 +60,8 @@ class LiteLLMProvider:
                 return Completion(data=data, meta=meta)
             except Exception as e:  # network errors, JSON errors, etc.
                 last_err = e
+                if attempt < self._retries and self._backoff_base:
+                    await asyncio.sleep(self._backoff_base ** attempt)
         raise ProviderError(
             f"completion failed after {self._retries + 1} attempts: {last_err}"
         )

@@ -130,7 +130,10 @@ class Orchestrator:
     async def run(self) -> None:
         self.recorder.save_game(self.game)
         while not self.game.is_game_done:
-            year = int(self.game.get_current_phase()[1:5])
+            phase = self.game.get_current_phase()
+            if not phase[1:5].isdigit():  # e.g. COMPLETED/FORMING — not a playable phase
+                break
+            year = int(phase[1:5])
             if year > self.config.max_year:
                 self.recorder.log(f"Reached max_year {self.config.max_year}; stopping.")
                 break
