@@ -1,0 +1,12 @@
+# Sample Diplomacy AI config. Set GEMINI_API_KEY in your environment before running.
+n_negotiation_rounds = 3
+max_year = 1910
+default_model = "gemini/gemini-2.5-pro"
+temperature = 0.7
+timeout = 60
+
+[powers.FRANCE]
+persona = "Cautious; prefers long-term alliances over early aggression."
+
+[powers.TURKEY]
+persona = "Opportunistic; strikes when neighbors are distracted."
