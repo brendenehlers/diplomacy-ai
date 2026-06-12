@@ -40,9 +40,16 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
 - **Order handling:** LLM orders are validated against the engine's legal-order
   list, with one repair re-prompt, then illegal orders are dropped (unit holds).
   The engine never receives an illegal order.
-- **Watching a game:** output lands in `runs/<timestamp>/`. Load `game.json` in
-  the official `diplomacy` web UI for the board + press; `transcript/<phase>.json`
-  holds each power's private reasoning, messages, and orders. `runs/` is gitignored.
+- **Watching a game:** output lands in `runs/<timestamp>/`. `transcript/<phase>.json`
+  holds each power's private reasoning, messages, and orders (`runs/` is gitignored).
+  To use the official web UI: `just ui-setup` once, then `just serve-engine`
+  (websocket server on :8432 — first launch precomputes convoy paths and takes a
+  few minutes) and `just serve-ui` (react-scripts dev server on :3000; pass a port
+  arg if 3000 is taken). In the UI: Connect to localhost:8432 → register/login →
+  "Load a game from disk" → `game.json`. The UI shows board + press only, not the
+  private reasoning. The `ui/` dir is a gitignored local copy of the package's web
+  app; `serve-ui` sets `NODE_OPTIONS=--openssl-legacy-provider` (required for
+  react-scripts 3 on Node 17+).
 - **Tests:** pytest runs with `asyncio_mode = "auto"` — async tests need no
   decorator. `tests/` is a package, so `from tests.conftest import ...` works.
 - A `DeprecationWarning` about `datetime.utcfromtimestamp` originates **inside the

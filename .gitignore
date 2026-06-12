@@ -12,3 +12,9 @@ runs/
 
 # Secrets
 .env
+
+# Local copy of the bundled diplomacy web UI (see `just ui-setup`)
+ui/
+
+# diplomacy websocket server runtime state (see `just serve-engine`)
+data/

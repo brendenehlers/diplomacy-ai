@@ -29,6 +29,28 @@ Output lands in `runs/<timestamp>/`:
 - `transcript/<phase>.json` — each power's private reasoning, messages, and orders.
 - `events.log` — running log.
 
+## Watch a game in the official web UI
+
+The `diplomacy` package bundles its React web UI. To replay a finished game:
+
+```bash
+just ui-setup        # one-time: copy the UI into ./ui and npm install
+
+just serve-engine    # terminal 1 — websocket server on :8432
+                     # (first launch precomputes convoy paths; wait a few minutes)
+just serve-ui        # terminal 2 — web UI on :3000 (pass a port if 3000 is taken,
+                     #   e.g. `just serve-ui 3007`)
+```
+
+Then open the UI, **Connect** to `localhost:8432`, register any username/password,
+log in, and choose **"Load a game from disk"** → `runs/<timestamp>/game.json`.
+
+Notes:
+- This shows the board + press only; private per-power reasoning lives in
+  `transcript/<phase>.json`.
+- The UI is an old react-scripts 3 app; the `serve-ui` recipe sets the legacy
+  OpenSSL flag it needs on modern Node. `ui/` is gitignored.
+
 ## Configuration
 
 Edit `game.toml`: set `n_negotiation_rounds`, `max_year`, `default_model`, and
