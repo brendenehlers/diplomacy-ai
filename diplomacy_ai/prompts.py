@@ -1,4 +1,5 @@
 """Pure prompt builders and JSON schemas. No I/O, no engine imports."""
+
 from __future__ import annotations
 
 from .models import InMessage, PowerView
@@ -7,8 +8,8 @@ RULES_PRIMER = (
     "You are playing Diplomacy, the classic 7-power strategy game set in pre-WWI "
     "Europe. Powers negotiate to coordinate moves, but all orders resolve "
     "simultaneously with no randomness. Support is needed to dislodge equal "
-    "strength. You win by controlling 18 supply centers; otherwise survive and "
-    "grow. Alliances are temporary and betrayal is part of the game."
+    "strength. You win by controlling 18 supply centers."
+    "Alliances are temporary and betrayal is part of the game."
 )
 
 NEGOTIATION_SCHEMA = {
@@ -66,33 +67,45 @@ def _inbox_block(inbox: list[InMessage]) -> str:
     return "\n".join(lines)
 
 
-def _system(view: PowerView, persona: str) -> str:
+def _system(view: PowerView, persona: str, end_year: int) -> str:
     return (
         f"{RULES_PRIMER}\n\n"
         f"You are {view.power_name}.{_persona_clause(persona)} "
-        f"Play to win for {view.power_name}. Respond ONLY with JSON matching the schema."
+        f"Play to win for {view.power_name}. "
+        f"THE GAME ENDS AFTER {end_year}. Any power that does not control 18 supply "
+        f"centers by then is ELIMINATED. A draw, a stalemate, or mere survival counts "
+        f"as elimination. Your only path to survival is an 18-center solo, so every "
+        f"phase you must be seizing centers and dismantling rivals — there is no time "
+        f"for lasting peace. Respond ONLY with JSON matching the schema."
     )
 
 
 def negotiation_prompt(
-    view: PowerView, persona: str, inbox: list[InMessage],
-    round_num: int, total_rounds: int,
+    view: PowerView,
+    persona: str,
+    inbox: list[InMessage],
+    round_num: int,
+    total_rounds: int,
+    end_year: int,
 ) -> tuple[str, str]:
     user = (
         f"Phase {view.phase}, negotiation round {round_num} of {total_rounds}.\n\n"
         f"Board state:\n{view.board_text}\n\n"
         f"{_inbox_block(inbox)}\n\n"
         f"{_legal_orders_block(view)}\n\n"
-        "Decide who to talk to and what to say. Use \"to\": \"GLOBAL\" for a public "
-        "broadcast, or a power name (e.g. \"ENGLAND\") for a private message. Send an "
+        'Decide who to talk to and what to say. Use "to": "GLOBAL" for a public '
+        'broadcast, or a power name (e.g. "ENGLAND") for a private message. Send an '
         "empty messages list if you prefer to stay silent. Put your private analysis "
-        "in \"reasoning\" (other powers never see it)."
+        'in "reasoning" (other powers never see it).'
     )
-    return _system(view, persona), user
+    return _system(view, persona, end_year), user
 
 
 def orders_prompt(
-    view: PowerView, persona: str, rejected: list[str] | None = None,
+    view: PowerView,
+    persona: str,
+    end_year: int,
+    rejected: list[str] | None = None,
 ) -> tuple[str, str]:
     rejected_block = ""
     if rejected:
@@ -105,6 +118,6 @@ def orders_prompt(
         f"Board state:\n{view.board_text}\n\n"
         f"{_legal_orders_block(view)}{rejected_block}\n\n"
         "Return your orders as a list of exact order strings chosen from the legal "
-        "orders above. Put your private analysis in \"reasoning\"."
+        'orders above. Put your private analysis in "reasoning".'
     )
-    return _system(view, persona), user
+    return _system(view, persona, end_year), user

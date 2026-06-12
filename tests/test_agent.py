@@ -10,7 +10,7 @@ VIEW = PowerView(
 
 def _agent(provider):
     return PowerAgent(power_name="FRANCE", model="m", persona="bold",
-                      provider=provider, temperature=0.5, timeout=10)
+                      provider=provider, temperature=0.5, timeout=10, end_year=1910)
 
 
 async def test_negotiate_parses_and_sanitizes_messages(make_provider):

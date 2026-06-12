@@ -20,6 +20,7 @@ def build_agents(config: GameConfig, provider) -> dict[str, PowerAgent]:
         p: PowerAgent(
             power_name=p, model=config.model_for(p), persona=config.persona_for(p),
             provider=provider, temperature=config.temperature, timeout=config.timeout,
+            end_year=config.max_year,
         )
         for p in POWERS
     }

@@ -15,7 +15,7 @@ VALID_RECIPIENTS = {
 class PowerAgent:
     def __init__(
         self, power_name: str, model: str, persona: str,
-        provider: Provider, temperature: float, timeout: int,
+        provider: Provider, temperature: float, timeout: int, end_year: int,
     ):
         self.power_name = power_name
         self.model = model
@@ -23,12 +23,14 @@ class PowerAgent:
         self.provider = provider
         self.temperature = temperature
         self.timeout = timeout
+        self.end_year = end_year
 
     async def negotiate(
         self, view: PowerView, inbox: list[InMessage],
         round_num: int, total_rounds: int,
     ) -> NegotiationResult:
-        system, user = negotiation_prompt(view, self.persona, inbox, round_num, total_rounds)
+        system, user = negotiation_prompt(
+            view, self.persona, inbox, round_num, total_rounds, self.end_year)
         try:
             c = await self.provider.complete(
                 model=self.model, system=system, user=user,
@@ -53,7 +55,7 @@ class PowerAgent:
     async def decide_orders(
         self, view: PowerView, rejected: list[str] | None = None,
     ) -> OrderResult:
-        system, user = orders_prompt(view, self.persona, rejected)
+        system, user = orders_prompt(view, self.persona, self.end_year, rejected)
         try:
             c = await self.provider.complete(
                 model=self.model, system=system, user=user,

@@ -12,20 +12,22 @@ VIEW = PowerView(
 
 def test_negotiation_prompt_includes_power_round_and_inbox():
     inbox = [InMessage(sender="ENGLAND", body="ally?", scope="private")]
-    system, user = negotiation_prompt(VIEW, "cautious", inbox, round_num=2, total_rounds=3)
+    system, user = negotiation_prompt(
+        VIEW, "cautious", inbox, round_num=2, total_rounds=3, end_year=1910)
     assert "FRANCE" in system and "cautious" in system
+    assert "1910" in system and "18 supply" in system
     assert "round 2 of 3" in user.lower()
     assert "ENGLAND" in user and "ally?" in user
     assert "A PAR - BUR" in user
 
 
 def test_negotiation_prompt_handles_empty_inbox():
-    system, user = negotiation_prompt(VIEW, "", [], round_num=1, total_rounds=3)
+    system, user = negotiation_prompt(VIEW, "", [], round_num=1, total_rounds=3, end_year=1910)
     assert "no messages" in user.lower()
 
 
 def test_orders_prompt_lists_legal_orders_and_rejected():
-    system, user = orders_prompt(VIEW, "bold", rejected=["A PAR - MOS"])
+    system, user = orders_prompt(VIEW, "bold", end_year=1910, rejected=["A PAR - MOS"])
     assert "A PAR - BUR" in user
     assert "A PAR - MOS" in user
     assert "rejected" in user.lower()
