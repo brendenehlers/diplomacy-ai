@@ -1,14 +1,20 @@
-"""LiteLLM async wrapper. The ONLY module that imports litellm."""
+"""OpenAI-SDK async wrapper for the ngrok AI Gateway.
+
+The ONLY module that imports the openai SDK.
+"""
 from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from typing import Any, Awaitable, Callable, Protocol
 
-import litellm
+from openai import AsyncOpenAI
 
 from .models import Completion
+
+DEFAULT_BASE_URL = "https://gateway.ngrok.ai/v1"
 
 
 class ProviderError(Exception):
@@ -22,14 +28,26 @@ class Provider(Protocol):
     ) -> Completion: ...
 
 
-class LiteLLMProvider:
+class OpenAIProvider:
     def __init__(
         self,
         completion_fn: Callable[..., Awaitable[Any]] | None = None,
         retries: int = 2,
         backoff_base: float = 2.0,
     ):
-        self._completion_fn = completion_fn or litellm.acompletion
+        if completion_fn is None:
+            api_key = os.environ.get("NGROK_API_KEY")
+            if not api_key:
+                raise ProviderError(
+                    "NGROK_API_KEY is not set. Add it to .env (see .env.example) "
+                    "or export it before running."
+                )
+            client = AsyncOpenAI(
+                api_key=api_key,
+                base_url=os.environ.get("NGROK_BASE_URL", DEFAULT_BASE_URL),
+            )
+            completion_fn = client.chat.completions.create
+        self._completion_fn = completion_fn
         self._retries = retries
         self._backoff_base = backoff_base
 
@@ -72,8 +90,18 @@ class LiteLLMProvider:
         if usage is not None:
             meta["prompt_tokens"] = getattr(usage, "prompt_tokens", None)
             meta["completion_tokens"] = getattr(usage, "completion_tokens", None)
-        try:
-            meta["cost"] = litellm.completion_cost(completion_response=resp)
-        except Exception:
-            meta["cost"] = None
+        meta["cost"] = _usage_cost(usage) if usage is not None else None
         return meta
+
+
+def _usage_cost(usage: Any) -> float | None:
+    """Pull the gateway's reported cost off the usage object.
+
+    The openai SDK surfaces non-standard response fields as plain attributes, so
+    whichever name the gateway uses we read it here rather than recomputing.
+    """
+    for name in ("cost", "total_cost", "cost_usd"):
+        value = getattr(usage, name, None)
+        if isinstance(value, (int, float)):
+            return float(value)
+    return None

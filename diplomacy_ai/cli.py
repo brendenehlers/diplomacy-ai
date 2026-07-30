@@ -11,7 +11,7 @@ from diplomacy import Game
 from .agent import PowerAgent
 from .config import GameConfig, load_config
 from .orchestrator import POWERS, Orchestrator
-from .provider import LiteLLMProvider
+from .provider import OpenAIProvider
 from .recorder import Recorder
 
 
@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     config = load_config(args.config)
-    provider = LiteLLMProvider()
+    provider = OpenAIProvider()
     game = Game()
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     recorder = Recorder(Path(args.out) / ts)

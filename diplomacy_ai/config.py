@@ -15,7 +15,7 @@ class PowerConfig(BaseModel):
 class GameConfig(BaseModel):
     n_negotiation_rounds: int = 3
     max_year: int = 1920
-    default_model: str = "lm_studio/qwen/qwen3-4b-thinking-2507"
+    default_model: str = "openai:openai/gpt-4o-mini"
     temperature: float = 0.7
     timeout: int = 60
     powers: dict[str, PowerConfig] = Field(default_factory=dict)

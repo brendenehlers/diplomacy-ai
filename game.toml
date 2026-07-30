@@ -1,15 +1,18 @@
 # Sample Diplomacy AI config.
-# Default model runs locally via LM Studio (OpenAI-compatible server).
-# Before running, start LM Studio with the model loaded and set:
-#   export LM_STUDIO_API_BASE=http://localhost:1234/v1
-#   export LM_STUDIO_API_KEY=lm-studio   # any non-empty string
+# All calls go through the ngrok AI Gateway (https://gateway.ngrok.ai/v1).
+# Set NGROK_API_KEY in .env before running.
+#
+# Model ids use the gateway's `provider:author/model` form, e.g.
+#   "openai:openai/gpt-4o-mini", "anthropic:anthropic/claude-sonnet-4"
+# Set `model` under a [powers.<NAME>] section to pit models against each other.
 n_negotiation_rounds = 3
 max_year = 1910
-default_model = "gemini/gemini-3.5-flash"
+default_model = "openai:openai/gpt-4o-mini"
 temperature = 0.7
 timeout = 600
 
 [powers.AUSTRIA]
+# model = "anthropic:anthropic/claude-sonnet-4"
 persona = "A cornered predator. Surrounded on all sides, you know defense is death, so you strike first. You forge alliances only to dismantle the weakest neighbor, and you betray the instant it nets you a center."
 
 [powers.ENGLAND]

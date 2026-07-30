@@ -25,7 +25,7 @@ test:
 test-one target:
     {{venv}}/pytest {{target}} -v
 
-# Run the live smoke test against Gemini (needs GEMINI_API_KEY)
+# Run the live smoke test against the ngrok gateway (needs NGROK_API_KEY)
 test-smoke:
     RUN_SMOKE=1 {{venv}}/pytest tests/test_smoke.py -v
 

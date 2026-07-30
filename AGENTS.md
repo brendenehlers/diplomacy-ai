@@ -21,22 +21,21 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
 
 - **Always use the venv** at `.venv/` (`.venv/bin/...`). Python is **3.14**, so
   `tomllib` is stdlib (no `tomli` dependency).
-- **Default model is local:** `lm_studio/qwen/qwen3-4b-thinking-2507`, served by
-  LM Studio's OpenAI-compatible endpoint. Before a real run, start LM Studio with
-  the model loaded and export `LM_STUDIO_API_BASE=http://localhost:1234/v1` and
-  `LM_STUDIO_API_KEY=lm-studio` (any non-empty string). To use a hosted provider
-  instead, change the model in `game.toml` and set its key (e.g. `GEMINI_API_KEY`).
-  The fast test suite uses a fake provider and needs **no network or LM Studio**.
+- **All LLM calls go through the ngrok AI Gateway** (`https://gateway.ngrok.ai/v1`),
+  an OpenAI-compatible endpoint fronting many providers behind one credential.
+  Set `NGROK_API_KEY` in `.env`; override the host with `NGROK_BASE_URL` only for a
+  custom gateway. The fast test suite uses a fake provider and needs **no network**.
 - **The smoke test is opt-in:** skipped unless both `RUN_SMOKE=1` and
-  `GEMINI_API_KEY` are set. It makes real API calls (costs money).
+  `NGROK_API_KEY` are set. It makes real API calls (costs money).
 - **Module boundaries are deliberate — keep them:**
   - `orchestrator.py` is the **only** module that imports `diplomacy` game logic.
-  - `provider.py` is the **only** module that imports `litellm`.
+  - `provider.py` is the **only** module that imports the `openai` SDK.
   - `models.py` and `prompts.py` are pure (no I/O, no engine/LLM imports).
   Swapping the engine or LLM backend should touch exactly one file.
 - **Switching models:** change the `model` string in `game.toml` (per-power) or
-  `default_model`. Any LiteLLM model id works (`gemini/...`, `openai/...`,
-  `anthropic/...`).
+  `default_model`. Ids use the gateway's `provider:author/model` form, e.g.
+  `openai:openai/gpt-4o-mini`, `anthropic:anthropic/claude-sonnet-4`. The string is
+  passed through verbatim — bad ids fail at call time, not at config load.
 - **Order handling:** LLM orders are validated against the engine's legal-order
   list, with one repair re-prompt, then illegal orders are dropped (unit holds).
   The engine never receives an illegal order.

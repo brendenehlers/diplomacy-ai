@@ -36,7 +36,7 @@ exactly one file.
 | `cli.py` | Entry point (`diplomacy-ai run`); wires everything together |
 | `orchestrator.py` | Owns the `Game`, runs the phase loop, routes press. **Only** module importing the `diplomacy` engine |
 | `agent.py` | `PowerAgent` — turns a board view into messages and orders |
-| `provider.py` | Async LiteLLM wrapper with retries/backoff and token/cost/latency capture. **Only** module importing `litellm` |
+| `provider.py` | Async OpenAI-SDK wrapper (ngrok AI Gateway) with retries/backoff and token/cost/latency capture. **Only** module importing `openai` |
 | `prompts.py` | System/user prompts + JSON schemas (pure) |
 | `models.py` | Shared dataclasses (pure, no I/O) |
 | `config.py` | TOML → Pydantic config |
@@ -51,40 +51,41 @@ just install                 # or: .venv/bin/pip install -e ".[dev]"
 cp .env.example .env         # just auto-loads .env
 ```
 
-The sample `game.toml` uses Google **Gemini** (`gemini/gemini-3.5-flash`). See
-[Play with Gemini](#play-with-gemini) below to get set up.
+Every model call goes through the [ngrok AI Gateway](https://ngrok.com/docs/ai-gateway/overview)
+(`https://gateway.ngrok.ai/v1`) — an OpenAI-compatible endpoint fronting many
+providers, so **one key** covers all of them.
 
-To run a model **locally** instead (no API key, no cost), use
-[LM Studio](https://lmstudio.ai/)'s OpenAI-compatible server: set
-`default_model` in `game.toml` to `lm_studio/qwen/qwen3-4b-thinking-2507`, start
-LM Studio with that model loaded, and set `LM_STUDIO_API_BASE` /
-`LM_STUDIO_API_KEY` in `.env`. Any [LiteLLM-supported](https://docs.litellm.ai/docs/providers)
-provider works the same way — change the model and set the matching key.
+## Get running
 
-## Play with Gemini
-
-The quickest way to run your own game. Gemini's free tier is enough to
-experiment with.
-
-1. **Get an API key** from [Google AI Studio](https://aistudio.google.com/apikey).
+1. **Get a gateway API key** from ngrok's AI Gateway.
 2. **Put it in `.env`** (copied from `.env.example`):
 
    ```bash
-   GEMINI_API_KEY=your-key-here
+   NGROK_API_KEY=ng-...
    ```
 
-   `just` auto-loads `.env`, so nothing else to export.
-3. **Pick your model** in `game.toml` — the default is `gemini/gemini-3.5-flash`
-   (fast and cheap). Swap in `gemini/gemini-2.5-pro` for stronger play. Any
-   `gemini/...` id LiteLLM knows works. You can also set a different `model`
-   per power under `[powers.<NAME>]` to pit models against each other.
+   `just` auto-loads `.env`, so nothing else to export. Set `NGROK_BASE_URL` only
+   if you run a custom gateway endpoint.
+3. **Pick your models** in `game.toml`. Ids use the gateway's
+   `provider:author/model` form — `default_model` applies to every power, and a
+   `model` under `[powers.<NAME>]` overrides it for that nation:
+
+   ```toml
+   default_model = "openai:openai/gpt-4o-mini"
+
+   [powers.FRANCE]
+   model = "anthropic:anthropic/claude-sonnet-4"
+   ```
+
+   That's the knob for pitting models and providers against each other — give all
+   seven different ids if you want a seven-way bake-off.
 4. **Run it:**
 
    ```bash
    just run
    ```
 
-5. **Verify your setup first** (one real Gemini phase) before a full game:
+5. **Verify your setup first** (one real phase) before a full game:
 
    ```bash
    RUN_SMOKE=1 just test-smoke
@@ -105,7 +106,8 @@ Output lands in `runs/<timestamp>/` (gitignored):
   board and press.
 - **`transcript/<phase>.json`** — each power's private reasoning, sent/received
   messages per round, raw + final orders, dropped orders, and call metadata
-  (tokens, cost, latency).
+  (tokens, cost, latency). `cost` is whatever the gateway reports in `usage`;
+  it's `null` if the gateway doesn't return one.
 - **`events.log`** — running progress log.
 
 Write to a custom directory with `just run-out game.toml <dir>` or
@@ -119,14 +121,15 @@ Edit `game.toml`:
 |-----|---------|
 | `n_negotiation_rounds` | Press rounds per movement phase |
 | `max_year` | Stop after this game year |
-| `default_model` | LiteLLM model id used for any power without an override |
+| `default_model` | Gateway model id used for any power without an override |
 | `temperature` / `timeout` | Passed to every completion |
 | `[powers.<NAME>]` | Per-power `model` and/or `persona` overrides |
 
-Any LiteLLM-supported model id works, e.g. `gemini/gemini-3.5-flash`,
-`gemini/gemini-2.5-pro`, `openai/gpt-4o`, `anthropic/claude-...`, or
-`lm_studio/qwen/qwen3-4b-thinking-2507` (local). Personas are free-text and shape how
-each power negotiates and plays; the sample config ships 7 aggressive ones.
+Model ids are `provider:author/model`, e.g. `openai:openai/gpt-4o-mini` or
+`anthropic:anthropic/claude-sonnet-4`. The string is sent to the gateway verbatim,
+so any id the gateway routes works — an unknown one fails on the first call, not at
+startup. Personas are free-text and shape how each power negotiates and plays; the
+sample config ships 7 aggressive ones.
 
 ## Watch a game in the official web UI
 
@@ -154,12 +157,12 @@ Notes:
 
 ```bash
 just test                              # fast suite, no network (fake provider)
-RUN_SMOKE=1 just test-smoke            # opt-in live phase (needs GEMINI_API_KEY, costs money)
+RUN_SMOKE=1 just test-smoke            # opt-in live phase (needs NGROK_API_KEY, costs money)
 just test-one tests/test_agent.py      # a single file
 ```
 
-The fast suite needs no network or LM Studio. The smoke test is skipped unless
-both `RUN_SMOKE=1` and `GEMINI_API_KEY` are set.
+The fast suite needs no network. The smoke test is skipped unless both
+`RUN_SMOKE=1` and `NGROK_API_KEY` are set.
 
 ## More
 
