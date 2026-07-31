@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 from diplomacy.utils.export import to_saved_game_format
@@ -12,6 +13,11 @@ class Recorder:
         self.run_dir = Path(run_dir)
         (self.run_dir / "transcript").mkdir(parents=True, exist_ok=True)
         self.events_path = self.run_dir / "events.log"
+
+    def save_config_file(self, config_path: str | Path) -> None:
+        """Copy the config file verbatim so the run's setup can be audited later."""
+        src = Path(config_path)
+        shutil.copyfile(src, self.run_dir / src.name)
 
     def save_game(self, game) -> None:
         data = to_saved_game_format(game)

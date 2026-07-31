@@ -19,6 +19,14 @@ def test_save_game_writes_loadable_json(tmp_path):
     assert "phases" in data and "map" in data
 
 
+def test_save_config_file_copies_source_toml(tmp_path):
+    src = tmp_path / "game.toml"
+    src.write_text('max_year = 1905\n')
+    rec = Recorder(tmp_path / "run")
+    rec.save_config_file(src)
+    assert (tmp_path / "run" / "game.toml").read_text() == 'max_year = 1905\n'
+
+
 def test_log_appends_lines(tmp_path):
     rec = Recorder(tmp_path / "run")
     rec.log("first")

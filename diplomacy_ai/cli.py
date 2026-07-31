@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> None:
     game = Game()
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     recorder = Recorder(Path(args.out) / ts)
+    recorder.save_config_file(args.config)
     agents = build_agents(config, provider)
     orch = Orchestrator(game, agents, config, recorder)
 
