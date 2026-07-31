@@ -1,8 +1,10 @@
 """Persistence: saved-game JSON, per-phase transcripts, event log."""
 from __future__ import annotations
 
+import datetime
 import json
 import shutil
+import sys
 from pathlib import Path
 
 from diplomacy.utils.export import to_saved_game_format
@@ -32,6 +34,14 @@ class Recorder:
         path = self.run_dir / "transcript" / f"{phase}.json"
         path.write_text(json.dumps(phase_records, indent=2, default=str))
 
-    def log(self, message: str) -> None:
+    def log(self, message: str, echo: bool = True) -> None:
+        """Append to events.log and (by default) mirror it to the console.
+
+        The file keeps the bare message; only the console gets a timestamp, so
+        a long run is watchable live without changing the on-disk format.
+        """
         with self.events_path.open("a") as f:
             f.write(message + "\n")
+        if echo:
+            stamp = datetime.datetime.now().strftime("%H:%M:%S")
+            print(f"[{stamp}] {message}", file=sys.stderr, flush=True)

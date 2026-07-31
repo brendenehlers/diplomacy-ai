@@ -76,6 +76,27 @@ class Orchestrator:
         record["dropped"] = invalid
         return power, valid, record
 
+    # --- progress logging helpers ---
+
+    @staticmethod
+    def _usage_summary(metas: list[dict]) -> str:
+        """One-line token/cost/latency roll-up for a batch of LLM calls."""
+        tokens = sum(
+            (m.get("prompt_tokens") or 0) + (m.get("completion_tokens") or 0)
+            for m in metas
+        )
+        latency = max((m.get("latency") or 0) for m in metas) if metas else 0
+        costs = [m.get("cost") for m in metas if isinstance(m.get("cost"), (int, float))]
+        parts = [f"{tokens} tok", f"slowest {latency:.1f}s"]
+        if costs:
+            parts.append(f"${sum(costs):.4f}")
+        return ", ".join(parts)
+
+    def _log_errors(self, metas: dict[str, dict], what: str) -> None:
+        for power, meta in metas.items():
+            if meta.get("error"):
+                self.recorder.log(f"    ! {power} {what} failed: {meta['error']}")
+
     def _alive_powers(self) -> list[str]:
         state = self.game.get_state()
         return [p for p in POWERS if state["units"][p] or state["centers"][p]]
@@ -93,7 +114,16 @@ class Orchestrator:
                 self.agents[p].negotiate(views[p], inboxes[p], rnd, total)
                 for p in alive
             ]
+            self.recorder.log(
+                f"  negotiation {rnd}/{total}: prompting {len(alive)} powers...")
             results = dict(zip(alive, await asyncio.gather(*coros)))
+            counts = " ".join(f"{p[:3]}={len(r.messages)}" for p, r in results.items())
+            self.recorder.log(
+                f"  negotiation {rnd}/{total}: "
+                f"{sum(len(r.messages) for r in results.values())} messages "
+                f"({counts}) [{self._usage_summary([r.meta for r in results.values()])}]"
+            )
+            self._log_errors({p: r.meta for p, r in results.items()}, "negotiation")
             for p, r in results.items():
                 phase_records[p]["negotiation_sent"].append({
                     "round": rnd, "reasoning": r.reasoning,
@@ -110,24 +140,48 @@ class Orchestrator:
 
     async def run_phase(self) -> None:
         phase = self.game.get_current_phase()
+        alive = self._alive_powers()
+        self.recorder.log(f"=== {phase} === {len(alive)} powers alive: {', '.join(alive)}")
         phase_records: dict = {p: {} for p in POWERS}
         if phase.endswith("M"):
             await self._run_negotiation(phase_records)
         order_powers = [p for p in POWERS if self.game.get_orderable_locations(p)]
         if order_powers:
             views = {p: self.build_view(p) for p in order_powers}
+            self.recorder.log(f"  orders: prompting {len(order_powers)} powers...")
             collected = await asyncio.gather(
                 *[self.collect_power_orders(p, views[p]) for p in order_powers]
             )
             for power, valid, record in collected:
                 self.game.set_orders(power, valid)
                 phase_records[power]["orders"] = record
+                line = f"    {power}: {'; '.join(valid) or '(none)'}"
+                if record["repaired"]:
+                    line += " (repaired)"
+                if record["dropped"]:
+                    line += f" [dropped: {', '.join(record['dropped'])}]"
+                self.recorder.log(line)
+            self.recorder.log(
+                f"  orders: {sum(len(v) for _, v, _ in collected)} accepted "
+                f"[{self._usage_summary([r['meta'] for _, _, r in collected])}]"
+            )
+            self._log_errors({p: r["meta"] for p, _, r in collected}, "orders")
         self.recorder.record_phase(phase, phase_records)
-        self.recorder.log(f"Processing {phase}")
+        self.recorder.log(f"  processing {phase}...")
         self.game.process()
         self.recorder.save_game(self.game)
+        centers = self.game.get_state()["centers"]
+        standings = " ".join(f"{p[:3]}={len(centers[p])}" for p in POWERS)
+        self.recorder.log(f"  centers: {standings}")
 
     async def run(self) -> None:
+        self.recorder.log(
+            f"Starting game: max_year={self.config.max_year}, "
+            f"negotiation_rounds={self.config.n_negotiation_rounds}, "
+            f"output={self.recorder.run_dir}"
+        )
+        for p in POWERS:
+            self.recorder.log(f"  {p}: {self.config.model_for(p)}")
         self.recorder.save_game(self.game)
         while not self.game.is_game_done:
             phase = self.game.get_current_phase()
