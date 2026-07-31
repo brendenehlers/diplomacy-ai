@@ -30,6 +30,7 @@ persona = "A ruthless expansionist. You negotiate freely, ally when it is useful
 persona = "A ruthless expansionist. You negotiate freely, ally when it is useful, and betray the moment it nets you a center. Stalemate is failure; always be taking ground."
 
 [powers.RUSSIA]
+model = "moonshotai:moonshotai/kimi-k3"
 persona = "A ruthless expansionist. You negotiate freely, ally when it is useful, and betray the moment it nets you a center. Stalemate is failure; always be taking ground."
 
 [powers.TURKEY]
