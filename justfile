@@ -46,6 +46,10 @@ watch-last:
     {{venv}}/diplomacy-ai viewer "$(ls -td runs/*/ | head -1)"
     open "$(ls -td runs/*/ | head -1)viewer.html"
 
+# Follow the most recent run live: open its viewer, then rebuild while it plays
+follow every="10":
+    dir="$(ls -td runs/*/ | head -1)" && {{venv}}/diplomacy-ai viewer "$dir" && open "$dir/viewer.html" && {{venv}}/diplomacy-ai viewer "$dir" --watch {{every}}
+
 # Show CLI help
 help:
     {{venv}}/diplomacy-ai run --help

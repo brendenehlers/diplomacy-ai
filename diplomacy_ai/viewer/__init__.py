@@ -43,8 +43,15 @@ def extract_map(map_name: str = "standard", svg_path: str | Path | None = None) 
                 return g
         return []
 
+    # jDip draws the province shapes through a group transform while every other
+    # layer — supply centres, labels, and the jdipNS unit anchors below — is in
+    # untransformed coordinates. Drop it and the board slides out from under its
+    # own units.
+    map_layer = layer("MapLayer")
+    map_tr = map_layer.get("transform") if hasattr(map_layer, "get") else None
+
     paths = []
-    for p in layer("MapLayer"):
+    for p in map_layer:
         if p.tag != NS + "path":
             continue
         pid = (p.get("id") or "").lstrip("_")
@@ -81,7 +88,7 @@ def extract_map(map_name: str = "standard", svg_path: str | Path | None = None) 
     # Starting viewBox only. It is not trustworthy — on the standard map the
     # source box is both padded and too small (Syria and Armenia fall outside
     # it) — so the page re-fits it by measuring the rendered paths.
-    return {"vb": root.get("viewBox"),
+    return {"vb": root.get("viewBox"), "tr": map_tr,
             "paths": paths, "units": units, "sc": sc, "labels": labels}
 
 
@@ -125,7 +132,8 @@ def build_payload(run_dir: str | Path) -> dict:
             "n": name,
             "u": {p: ph["state"]["units"].get(p, []) for p in powers},
             "c": {p: ph["state"]["centers"].get(p, []) for p in powers},
-            "o": ph.get("orders") or {},
+            # The phase in progress carries a null order list per power.
+            "o": {p: o for p, o in (ph.get("orders") or {}).items() if o},
             "press": press, "dec": dec,
         })
 
@@ -196,14 +204,26 @@ def _asset(name: str) -> str:
 
 
 def build_viewer(run_dir: str | Path, out_path: str | Path | None = None,
-                 map_name: str = "standard", title: str | None = None) -> Path:
-    """Write a single self-contained HTML file for `run_dir`. Returns its path."""
+                 map_name: str = "standard", title: str | None = None,
+                 refresh: float | None = None) -> Path:
+    """Write a single self-contained HTML file for `run_dir`. Returns its path.
+
+    `refresh` makes the page reload itself every that many seconds, so a viewer
+    rebuilt during a live run (see `diplomacy-ai viewer --watch`) picks up the
+    phases played since it was opened.
+    """
     run_dir = Path(run_dir)
     out_path = Path(out_path) if out_path else run_dir / "viewer.html"
     payload = build_payload(run_dir)
     title = title or f"Diplomacy AI — run {run_dir.name}"
 
     html = _asset("shell.html")
+    # Not <meta http-equiv="refresh">: that reloads the bare document URL, losing
+    # the fragment the page keeps the reader's phase and power in. The page
+    # reloads itself instead, which preserves it.
+    html = html.replace(
+        "<!--{{REFRESH}}-->",
+        f"<script>window.DAI_REFRESH={max(1, round(refresh))}</script>" if refresh else "")
     html = html.replace("{{TITLE}}", title)
     html = html.replace("/*{{CSS}}*/", _asset("app.css"))
     html = html.replace("/*{{JS}}*/", _asset("app.js"))

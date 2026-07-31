@@ -167,6 +167,28 @@ would otherwise be guessing.
 Pass `--no-viewer` to `diplomacy-ai run` to skip generating it, or `--map <name>`
 to `diplomacy-ai viewer` for a non-standard board.
 
+### Follow a game as it plays
+
+The viewer is a snapshot, but a run writes its phases to disk as it finishes
+them, so a snapshot rebuilt on a timer is a live one. From a second terminal:
+
+```bash
+just follow                          # open the newest run, then rebuild every 10s
+just follow 30                       # …or on a slower timer
+diplomacy-ai viewer <run_dir> --watch 10
+```
+
+`--watch` rebuilds only when the run writes something new, and tells the page to
+reload itself on the same interval, so an open tab follows along. The reload
+keeps the phase and power you were looking at (they live in the URL, so a
+position is also linkable), your scroll offset and your theme — and if you were
+sitting on the newest phase, it moves you onto whatever has been played since.
+Ctrl-C to stop.
+
+It is still a reload, so the page does blink each time. If that grates while
+reading, stop the watcher and step through at your own pace; the run keeps
+writing either way.
+
 ## Watch a game in the official web UI
 
 The `diplomacy` package bundles a React web UI. To replay a finished game:

@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!--{{REFRESH}}-->
 <title>{{TITLE}}</title>
+<script>
+/* Ahead of the stylesheet, so a chosen theme is in place for the first paint
+   and a --watch reload never flashes the system theme on its way back to it. */
+try {
+  var t = sessionStorage.getItem("dai:theme");
+  if (t) document.documentElement.setAttribute("data-theme", t);
+} catch (e) { /* storage blocked; the CSS media query still picks a theme */ }
+</script>
 <style>/*{{CSS}}*/</style>
 </head>
 <body>

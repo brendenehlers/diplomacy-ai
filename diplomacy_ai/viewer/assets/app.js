@@ -22,7 +22,11 @@ const isPlayable = n => /^[SFW]\d{4}[MRA]$/.test(n);
 const root = document.documentElement;
 $("themetog").addEventListener("click", () => {
   const dark = getComputedStyle(root).getPropertyValue("--page").trim() === "#0E1820";
-  root.setAttribute("data-theme", dark ? "light" : "dark");
+  const pick = dark ? "light" : "dark";
+  root.setAttribute("data-theme", pick);
+  // The head applies this before the first paint, so a --watch reload does not
+  // flash the system theme on its way back to the chosen one.
+  try { sessionStorage.setItem("dai:theme", pick); } catch (e) { /* no storage */ }
 });
 
 /* ------------------------------------------------------------------ header */
@@ -95,13 +99,17 @@ function buildBoard() {
   const svg = $("board");
   svg.setAttribute("viewBox", M.vb);
   const cls = c => c === "water" ? "water" : c === "impassable" ? "imp" : "land";
+  // The shapes carry the map layer's own transform; it has to ride with them or
+  // they land ~200px off the unit anchors, dots and labels they belong to. It
+  // goes on an inner group so #pvs still measures the transformed box.
+  const shapes = M.paths.map(p =>
+    `<path class="pv ${cls(p.c)}" id="pv_${p.id}" d="${p.d}"><title>${p.id}</title></path>`
+  ).join("");
   svg.innerHTML =
     `<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4.5"
       markerHeight="4.5" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker></defs>` +
-    `<g id="pvs">` + M.paths.map(p =>
-      `<path class="pv ${cls(p.c)}" id="pv_${p.id}" d="${p.d}"><title>${p.id}</title></path>`
-    ).join("") + `</g>` +
+    `<g id="pvs">` + (M.tr ? `<g transform="${esc(M.tr)}">${shapes}</g>` : shapes) + `</g>` +
     `<g id="scs">` + Object.values(M.sc).map(v =>
       `<circle class="scdot" cx="${v[0]}" cy="${v[1]}" r="6"/>`).join("") + `</g>` +
     `<g id="lbls">` + M.labels.map(l => l.tr
@@ -138,7 +146,7 @@ function drawOrders(ph) {
   let out = "";
   for (const pw of Object.keys(ph.o || {})) {
     const col = PC(pw);
-    for (const raw of ph.o[pw]) {
+    for (const raw of ph.o[pw] || []) {   // the phase in progress has none yet
       const t = String(raw).trim(); let m;
       if ((m = t.match(/^[AF] (\S+) S [AF] (\S+) - (\S+)$/))) {
         const s = at(m[1]), b = at(m[3]);
@@ -174,14 +182,22 @@ function drawUnits(ph) {
   let out = "";
   for (const pw of POWERS) {
     for (const u of (ph.u[pw] || [])) {
-      const kind = u[0], loc = u.slice(2).trim(), c = at(loc);
-      if (!c) continue;
+      // A retreat phase marks a dislodged unit with a leading "*"; it shares the
+      // province with whoever pushed it out, so draw it faded rather than as a
+      // unit of kind "*".
+      const dis = u[0] === "*", s = dis ? u.slice(1) : u;
+      const kind = s[0], loc = s.slice(2).trim(), a = at(loc);
+      if (!a) continue;
+      // Nudged clear of the unit that dislodged it, which stands on the same dot.
+      const c = dis ? [a[0] + 15, a[1] - 15] : a;
+      const k = `unit${dis ? " dis" : ""}`, name = dis ? " dislodged" : "";
       out += kind === "F"
-        ? `<path class="unit" fill="${PC(pw)}" d="M${c[0] - 15} ${c[1] - 9} h30 l-6 18 h-18 z">
-            <title>${pw} fleet ${loc}</title></path>`
-        : `<circle class="unit" fill="${PC(pw)}" cx="${c[0]}" cy="${c[1]}" r="13">
-            <title>${pw} army ${loc}</title></circle>`;
-      out += `<text class="utxt" x="${c[0]}" y="${c[1] + (kind === "F" ? 4 : 0)}">${kind}</text>`;
+        ? `<path class="${k}" fill="${PC(pw)}" d="M${c[0] - 15} ${c[1] - 9} h30 l-6 18 h-18 z">
+            <title>${pw} fleet ${loc}${name}</title></path>`
+        : `<circle class="${k}" fill="${PC(pw)}" cx="${c[0]}" cy="${c[1]}" r="13">
+            <title>${pw} army ${loc}${name}</title></circle>`;
+      out += `<text class="utxt${dis ? " dis" : ""}" x="${c[0]}"
+        y="${c[1] + (kind === "F" ? 4 : 0)}">${kind}</text>`;
     }
   }
   $("units").innerHTML = out;
@@ -246,6 +262,7 @@ function panel() {
     h += `</div>`;
   }
   $("pbody").innerHTML = h;
+  savePos();   // here, not in render(): the power tabs repaint the panel alone
 }
 
 function render() {
@@ -358,6 +375,32 @@ function report() {
     `${G.phases.length} phases, ${nf(totalCalls)} model calls.`;
 }
 
+/* -------------------------------------------------- position across reloads */
+/* A viewer built with --watch reloads itself on a timer while the game is still
+   being played, so everything the reader has touched has to survive a reload.
+   Phase and power ride in the URL fragment: no storage permission is involved,
+   which matters because browsers disagree about storage on file:// URLs, and it
+   makes a position linkable. Scroll offset goes to sessionStorage, where losing
+   it costs little. Theme is restored in the page head, before the first paint. */
+function savePos() {
+  // The trailing marker means "was on the newest phase" — such a reader is
+  // watching the game, not reading back, so a new phase should carry them along.
+  const at = `#${cur}/${curPower}${cur === G.phases.length - 1 ? "/live" : ""}`;
+  if (location.hash !== at) location.replace(at);   // replace: no history entry
+}
+function restorePos() {
+  const [i, p, live] = decodeURIComponent(location.hash.slice(1)).split("/");
+  const last = G.phases.length - 1;
+  if (POWERS.indexOf(p) >= 0) curPower = p;
+  cur = live ? last : Math.min(Math.max(0, parseInt(i, 10) || 0), last);
+}
+function restoreScroll() {
+  let y = 0;
+  try { y = +sessionStorage.getItem(YKEY) || 0; } catch (e) { return; }
+  // After render(), so the page is its full height and the offset still lands.
+  if (y) requestAnimationFrame(() => scrollTo(0, y));
+}
+
 /* ---------------------------------------------------------------- wiring */
 buildBoard(); standings(); report();
 const scrub = $("scrub");
@@ -391,5 +434,19 @@ $("play").addEventListener("click", () => {
   }, 1400);
 });
 
-render();
+const YKEY = "dai:y:" + G.setup.run;
+addEventListener("scroll", () => {
+  try { sessionStorage.setItem(YKEY, String(Math.round(scrollY))); } catch (e) { /**/ }
+}, { passive: true });
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+restorePos();
+goto(cur);          // via goto: it renders, and covers a power idle this phase
+restoreScroll();
+
+/* --watch builds set this; the run keeps writing, so pick up what it wrote. */
+if (window.DAI_REFRESH) {
+  const tick = () => document.hidden ? setTimeout(tick, 1000) : location.reload();
+  setTimeout(tick, window.DAI_REFRESH * 1000);   // a hidden tab waits its turn
+}
 })();

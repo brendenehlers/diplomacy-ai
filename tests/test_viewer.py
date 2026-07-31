@@ -98,6 +98,20 @@ def test_build_viewer_writes_one_self_contained_file(tmp_path):
     assert "<link" not in html and "src=" not in html
     assert "{{DATA}}" not in html and "{{CSS}}" not in html and "{{JS}}" not in html
     assert "A PAR - BUR" in html
+    # The page reads DAI_REFRESH either way; only a --watch build declares it,
+    # and without a value the reload never arms — a finished run stays put.
+    assert "DAI_REFRESH=" not in html
+
+
+def test_watch_interval_makes_the_page_reload_itself(tmp_path):
+    html = build_viewer(make_run(tmp_path), refresh=10).read_text()
+    assert "window.DAI_REFRESH=10" in html
+    # A <meta refresh> reloads the bare URL and drops the fragment the page keeps
+    # the reader's phase and power in, so the reload has to come from the page.
+    assert "http-equiv" not in html
+    # sub-second intervals would hammer the browser; the interval floors at one
+    html = build_viewer(make_run(tmp_path / "b"), refresh=0.2).read_text()
+    assert "window.DAI_REFRESH=1" in html
 
 
 def test_embedded_json_cannot_break_out_of_the_script_tag(tmp_path):

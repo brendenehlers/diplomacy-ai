@@ -16,6 +16,7 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
 | Live smoke test | `just test-smoke` | `RUN_SMOKE=1 .venv/bin/pytest tests/test_smoke.py` |
 | Run a game | `just run` | `.venv/bin/diplomacy-ai run --config game.toml` |
 | Rebuild a run's viewer | `just viewer <run_dir>` | `.venv/bin/diplomacy-ai viewer <run_dir>` |
+| Follow a live run | `just follow` | `.venv/bin/diplomacy-ai viewer <run_dir> --watch 10` |
 | CLI help | `just help` | `.venv/bin/diplomacy-ai run --help` |
 
 ## Caveats
