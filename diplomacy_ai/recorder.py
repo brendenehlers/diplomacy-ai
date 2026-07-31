@@ -14,6 +14,11 @@ class Recorder:
         (self.run_dir / "transcript").mkdir(parents=True, exist_ok=True)
         self.events_path = self.run_dir / "events.log"
 
+    def save_config(self, config) -> None:
+        """Snapshot the run's settings so the viewer can show what was configured."""
+        (self.run_dir / "config.json").write_text(
+            json.dumps(config.model_dump(), indent=2, default=str))
+
     def save_config_file(self, config_path: str | Path) -> None:
         """Copy the config file verbatim so the run's setup can be audited later."""
         src = Path(config_path)

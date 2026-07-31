@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}}</title>
+<style>/*{{CSS}}*/</style>
+</head>
+<body>
+<div class="mast"><div class="wrap">
+  <span class="id"><b>DIPLOMACY&#8209;AI</b> <span id="runid"></span></span>
+  <span class="id" id="mast-span"></span>
+  <span class="id" id="mast-calls"></span>
+  <button class="themetog" id="themetog" type="button" aria-label="Toggle colour theme">&#9681;</button>
+</div></div>
+
+<div class="wrap">
+  <header class="hero">
+    <p class="eyebrow" id="eyebrow"></p>
+    <h1 id="title"></h1>
+    <p class="dek" id="dek"></p>
+  </header>
+
+  <section id="setup">
+    <div class="shead"><h2>Setup</h2><div class="note">Conditions the game started from</div></div>
+    <div class="figs" id="settings"></div>
+    <div class="roster" id="roster"></div>
+  </section>
+</div>
+
+<div class="wrap wide">
+  <section id="game">
+    <div class="shead"><h2>The game</h2><div class="note" id="gnote"></div></div>
+    <div class="viewer">
+      <div class="vbar">
+        <div class="nav">
+          <button id="prev" type="button" aria-label="Previous phase">&#8592;</button>
+          <button id="next" type="button" aria-label="Next phase">&#8594;</button>
+          <button id="play" type="button" aria-label="Play through phases">&#9654;</button>
+        </div>
+        <div class="vphase cond" id="vphase"></div>
+        <input class="scrub" id="scrub" type="range" min="0" step="1" value="0" aria-label="Phase">
+        <div class="vcount" id="vcount"></div>
+      </div>
+      <div class="vbody">
+        <div class="mapwrap">
+          <svg id="board" role="img" aria-label="Board position for the selected phase"></svg>
+        </div>
+        <div class="side">
+          <div class="ptabs" id="ptabs" role="tablist"></div>
+          <div class="pbody" id="pbody"></div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+</div>
+
+<div class="wrap">
+  <section>
+    <div class="shead"><h2>Standings</h2><div class="note">Supply centres held, by year</div></div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section>
+    <div class="shead"><h2>Model report</h2><div class="note">Calls, tokens and latency per power</div></div>
+    <div class="tablewrap"><table class="report" id="report"></table></div>
+    <p class="fineprint" id="reportnote"></p>
+  </section>
+</div>
+
+<footer><div class="wrap">
+  <p id="foot"></p>
+  <p>Board geometry adapted from the jDip standard map by Zach DelProposto (GPL), which ships
+  with the <code>diplomacy</code> engine. Use &#8592; and &#8594; to step through phases.</p>
+</div></footer>
+
+<script id="data" type="application/json">"{{DATA}}"</script>
+<script id="mapdata" type="application/json">"{{MAP}}"</script>
+<script>/*{{JS}}*/</script>
+</body>
+</html>

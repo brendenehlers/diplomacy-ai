@@ -15,6 +15,7 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
 | One test file | `just test-one tests/test_x.py` | `.venv/bin/pytest <path> -v` |
 | Live smoke test | `just test-smoke` | `RUN_SMOKE=1 .venv/bin/pytest tests/test_smoke.py` |
 | Run a game | `just run` | `.venv/bin/diplomacy-ai run --config game.toml` |
+| Rebuild a run's viewer | `just viewer <run_dir>` | `.venv/bin/diplomacy-ai viewer <run_dir>` |
 | CLI help | `just help` | `.venv/bin/diplomacy-ai run --help` |
 
 ## Caveats
@@ -29,6 +30,8 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
   `NGROK_API_KEY` are set. It makes real API calls (costs money).
 - **Module boundaries are deliberate — keep them:**
   - `orchestrator.py` is the **only** module that imports `diplomacy` game logic.
+    (`viewer/` reads a map SVG out of the installed `diplomacy` package, but
+    touches no game classes.)
   - `provider.py` is the **only** module that imports the `openai` SDK.
   - `models.py` and `prompts.py` are pure (no I/O, no engine/LLM imports).
   Swapping the engine or LLM backend should touch exactly one file.
@@ -41,6 +44,9 @@ A `justfile` wraps everything. Prefer it; the raw equivalents are shown for clar
   The engine never receives an illegal order.
 - **Watching a game:** output lands in `runs/<timestamp>/`. `transcript/<phase>.json`
   holds each power's private reasoning, messages, and orders (`runs/` is gitignored).
+  Each run also writes a standalone `viewer.html` (board + all phases + model report);
+  `diplomacy_ai/viewer/` builds it from disk alone, so it works on any run directory,
+  including ones made before `config.json` was recorded.
   To use the official web UI: `just ui-setup` once, then `just serve-engine`
   (websocket server on :8432 — first launch precomputes convoy paths and takes a
   few minutes) and `just serve-ui` (react-scripts dev server on :3000; pass a port

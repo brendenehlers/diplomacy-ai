@@ -22,6 +22,9 @@ diplomacy-ai = "diplomacy_ai.cli:main"
 [tool.setuptools.packages.find]
 include = ["diplomacy_ai*"]
 
+[tool.setuptools.package-data]
+"diplomacy_ai.viewer" = ["assets/*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

@@ -40,7 +40,8 @@ exactly one file.
 | `prompts.py` | System/user prompts + JSON schemas (pure) |
 | `models.py` | Shared dataclasses (pure, no I/O) |
 | `config.py` | TOML → Pydantic config |
-| `recorder.py` | Writes `game.json`, per-phase transcripts, and `events.log` |
+| `recorder.py` | Writes `config.json`, `game.json`, per-phase transcripts, and `events.log` |
+| `viewer/` | Builds a standalone `viewer.html` from a finished run |
 
 ## Setup
 
@@ -102,6 +103,10 @@ just run                     # or: .venv/bin/diplomacy-ai run --config game.toml
 
 Output lands in `runs/<timestamp>/` (gitignored):
 
+- **`viewer.html`** — a standalone page for the whole game: interactive board,
+  every phase, every message, and each power's private reasoning. See
+  [Share a game](#share-a-game) below.
+- **`config.json`** — the settings the run started from (models, personas, limits).
 - **`game.json`** — saved-game file; load it in the official web UI to watch the
   board and press.
 - **`transcript/<phase>.json`** — each power's private reasoning, sent/received
@@ -130,6 +135,37 @@ Model ids are `provider:author/model`, e.g. `openai:openai/gpt-4o-mini` or
 so any id the gateway routes works — an unknown one fails on the first call, not at
 startup. Personas are free-text and shape how each power negotiates and plays; the
 sample config ships 7 aggressive ones.
+
+## Share a game
+
+Every run writes **`runs/<timestamp>/viewer.html`** — one self-contained file with
+no external dependencies, so you can email it, drop it in a bucket, or open it
+straight off disk.
+
+```bash
+just watch-last                      # build for the newest run and open it
+just viewer runs/20260730-135318     # or rebuild for a specific run
+```
+
+It contains:
+
+- **Setup** — the model and persona behind each power, the run's settings, and
+  each power's opening position.
+- **The game** — an interactive board for all phases. Provinces fill with the
+  owner's colour as centres change hands; orders draw as arrows (move), dashed
+  lines (support), dotted (convoy), rings (hold) and crosses (disband). Step with
+  the slider, the ← → keys, or play it through.
+- **Per-power panel** — for the selected phase, that power's private reasoning,
+  every message it sent that round, and its orders, with illegal ones struck out.
+- **Standings** and a **model report** — calls, tokens, latency and errors per power.
+
+Runs made before this existed still work — `just viewer <dir>` recovers the model
+per power from the metadata recorded on each call. Only the personas and settings
+are missing, since those runs predate `config.json`; the page says so where it
+would otherwise be guessing.
+
+Pass `--no-viewer` to `diplomacy-ai run` to skip generating it, or `--map <name>`
+to `diplomacy-ai viewer` for a non-standard board.
 
 ## Watch a game in the official web UI
 

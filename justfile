@@ -37,6 +37,15 @@ run config="game.toml":
 run-out config="game.toml" out="runs":
     {{venv}}/diplomacy-ai run --config {{config}} --out {{out}}
 
+# Rebuild the standalone HTML viewer for a run (runs also write one automatically)
+viewer run_dir:
+    {{venv}}/diplomacy-ai viewer {{run_dir}}
+
+# Build the viewer for the most recent run and open it
+watch-last:
+    {{venv}}/diplomacy-ai viewer "$(ls -td runs/*/ | head -1)"
+    open "$(ls -td runs/*/ | head -1)viewer.html"
+
 # Show CLI help
 help:
     {{venv}}/diplomacy-ai run --help
