@@ -16,7 +16,9 @@ class GameConfig(BaseModel):
     n_negotiation_rounds: int = 3
     max_year: int = 1920
     default_model: str = "openai:openai/gpt-4o-mini"
-    temperature: float = 0.7
+    # None = omit the param so each model uses its own default. Some models
+    # (gpt-5 family) 400 on any explicit non-default temperature.
+    temperature: float | None = None
     timeout: int = 60
     powers: dict[str, PowerConfig] = Field(default_factory=dict)
 

@@ -34,7 +34,9 @@ async def test_negotiate_degrades_on_provider_error(make_provider):
     prov = make_provider([None])
     res = await _agent(prov).negotiate(VIEW, [InMessage("ENGLAND", "hi", "private")], 1, 3)
     assert res.messages == []
-    assert res.meta.get("error") is True
+    # The provider's message must survive, not be flattened to a bare flag.
+    assert res.meta.get("error") == "boom"
+    assert "boom" in res.reasoning
 
 
 async def test_decide_orders_parses_orders(make_provider):
@@ -46,7 +48,9 @@ async def test_decide_orders_parses_orders(make_provider):
 async def test_decide_orders_degrades_to_hold_on_error(make_provider):
     prov = make_provider([None])
     res = await _agent(prov).decide_orders(VIEW)
-    assert res.orders == [] and res.meta.get("error") is True
+    assert res.orders == []
+    assert res.meta.get("error") == "boom"
+    assert "boom" in res.reasoning
 
 
 async def test_decide_orders_passes_rejected_to_prompt(make_provider):

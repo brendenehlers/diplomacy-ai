@@ -71,6 +71,28 @@ async def test_model_id_passed_through_verbatim():
     assert c.meta["model"] == "anthropic:anthropic/claude-sonnet-4"
 
 
+async def test_temperature_omitted_when_none():
+    seen = {}
+    async def fake(**kwargs):
+        seen.update(kwargs)
+        return _Resp('{"reasoning": "ok"}')
+    prov = OpenAIProvider(completion_fn=fake)
+    await prov.complete(model="m", system="s", user="u", schema=SCHEMA,
+                        schema_name="t", temperature=None, timeout=10)
+    assert "temperature" not in seen
+
+
+async def test_temperature_sent_when_set():
+    seen = {}
+    async def fake(**kwargs):
+        seen.update(kwargs)
+        return _Resp('{"reasoning": "ok"}')
+    prov = OpenAIProvider(completion_fn=fake)
+    await prov.complete(model="m", system="s", user="u", schema=SCHEMA,
+                        schema_name="t", temperature=0.3, timeout=10)
+    assert seen["temperature"] == 0.3
+
+
 class _Usage:
     def __init__(self, **fields):
         self.prompt_tokens = fields.pop("prompt_tokens", 10)

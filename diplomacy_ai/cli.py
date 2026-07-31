@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import datetime
+import logging
 from pathlib import Path
 
 from diplomacy import Game
@@ -33,6 +34,9 @@ def main(argv: list[str] | None = None) -> None:
     run_p.add_argument("--config", required=True, help="Path to game.toml")
     run_p.add_argument("--out", default="runs", help="Output directory for runs")
     args = parser.parse_args(argv)
+
+    # Provider failures log here; without this they'd only reach the transcript.
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
     config = load_config(args.config)
     provider = OpenAIProvider()

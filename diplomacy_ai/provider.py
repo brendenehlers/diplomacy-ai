@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import time
 from typing import Any, Awaitable, Callable, Protocol
@@ -15,6 +16,8 @@ from openai import AsyncOpenAI
 from .models import Completion
 
 DEFAULT_BASE_URL = "https://gateway.ngrok.ai/v1"
+
+log = logging.getLogger(__name__)
 
 
 class ProviderError(Exception):
@@ -53,7 +56,7 @@ class OpenAIProvider:
 
     async def complete(
         self, *, model: str, system: str, user: str, schema: dict,
-        schema_name: str, temperature: float, timeout: int,
+        schema_name: str, temperature: float | None, timeout: int,
     ) -> Completion:
         messages = [
             {"role": "system", "content": system},
@@ -63,21 +66,29 @@ class OpenAIProvider:
             "type": "json_schema",
             "json_schema": {"name": schema_name, "schema": schema, "strict": True},
         }
+        kwargs: dict[str, Any] = {
+            "model": model, "messages": messages,
+            "response_format": response_format, "timeout": timeout,
+        }
+        # Some models (e.g. the gpt-5 family) reject any non-default temperature,
+        # so omit it entirely rather than sending the API default.
+        if temperature is not None:
+            kwargs["temperature"] = temperature
         last_err: Exception | None = None
         for attempt in range(self._retries + 1):
             start = time.perf_counter()
             try:
-                resp = await self._completion_fn(
-                    model=model, messages=messages,
-                    response_format=response_format,
-                    temperature=temperature, timeout=timeout,
-                )
+                resp = await self._completion_fn(**kwargs)
                 content = resp.choices[0].message.content
                 data = json.loads(content)
                 meta = self._extract_meta(resp, model, time.perf_counter() - start)
                 return Completion(data=data, meta=meta)
             except Exception as e:  # network errors, JSON errors, etc.
                 last_err = e
+                log.warning(
+                    "completion attempt %d/%d for %s failed: %s",
+                    attempt + 1, self._retries + 1, model, e,
+                )
                 if attempt < self._retries and self._backoff_base:
                     await asyncio.sleep(self._backoff_base ** attempt)
         raise ProviderError(

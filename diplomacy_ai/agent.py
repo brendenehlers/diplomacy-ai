@@ -37,10 +37,10 @@ class PowerAgent:
                 schema=NEGOTIATION_SCHEMA, schema_name="negotiation",
                 temperature=self.temperature, timeout=self.timeout,
             )
-        except ProviderError:
+        except ProviderError as e:
             return NegotiationResult(
-                reasoning="[provider error: no messages sent]", messages=[],
-                meta={"error": True},
+                reasoning=f"[provider error: no messages sent] {e}", messages=[],
+                meta={"error": str(e)},
             )
         messages = []
         for m in c.data.get("messages", []):
@@ -62,8 +62,8 @@ class PowerAgent:
                 schema=ORDERS_SCHEMA, schema_name="orders",
                 temperature=self.temperature, timeout=self.timeout,
             )
-        except ProviderError:
-            return OrderResult(reasoning="[provider error: holding]", orders=[],
-                               meta={"error": True})
+        except ProviderError as e:
+            return OrderResult(reasoning=f"[provider error: holding] {e}", orders=[],
+                               meta={"error": str(e)})
         orders = [str(o).strip() for o in c.data.get("orders", []) if str(o).strip()]
         return OrderResult(reasoning=c.data.get("reasoning", ""), orders=orders, meta=c.meta)
